@@ -17,3 +17,5 @@
  */
 
 
+Ce module vous permet de rajouter des messages d'alertes sur certaine combinaison d'action.
+Ex : création d'une commande sur un tiers précis, création d'une commande par un utilisateur particuliers, etc
