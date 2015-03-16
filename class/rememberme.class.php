@@ -18,13 +18,15 @@ class TRememberMe extends TObjetStd {
         
         $PDOdb = new TPDOdb;
         
-        $Tab = $PDOdb->ExecuteAsArray("SELECT fk_societe,fk_user,message FROM ".MAIN_DB_PREFIX."rememberme WHERE trigger_code='".$action."'");
+        $Tab = $PDOdb->ExecuteAsArray("SELECT fk_societe,fk_user,message,type_msg FROM ".MAIN_DB_PREFIX."rememberme WHERE trigger_code='".$action."'");
         foreach($Tab as $row) {
-            var_dump($row);
+            //var_dump($row);
             if($row->fk_societe>0 && ($object->fk_soc!=$row->fk_societe && $object->socid!=$row->fk_societe ) ) continue; // pas pour lui ce message
             if($row->fk_user>0 && $row->fk_user!=$user->id)continue; // non plus
             
-            setEventMessage($row->message, 'warnings');
+            if(empty($row->type_msg))$row->type_msg='warnings';
+            
+            setEventMessage($row->message, $row->type_msg);
             
         }
         
