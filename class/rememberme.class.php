@@ -7,10 +7,26 @@ class TRememberMe extends TObjetStd {
         parent::add_champs('fk_societe,fk_user','type=entier;index;');
         parent::add_champs('trigger_code','type=chaine;index;');
         
-        parent::add_champs('message','type=text;');
+        parent::add_champs('message,condition','type=text;');
         
         parent::_init_vars();
         parent::start();
+    }
+    
+    static function getAll(&$PDOdb) {
+        $PDOdb=new TPDOdb;
+        $Tab = $PDOdb->ExecuteAsArray("SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme ORDER BY date_cre");
+        
+        $TRes = array();
+        foreach($Tab as $row) {
+            
+            $r=new TRememberMe;
+            $r->load($PDOdb, $row->rowid);
+            
+            $TRes[] = $r;
+        }
+        
+        return $TRes ;
     }
     
     static function message($action, &$object) {
