@@ -120,8 +120,9 @@ class InterfaceRememberMetrigger
         
         define('INC_FROM_DOLIBARR', true);
         dol_include_once('/rememberme/config.php');
-        TRememberMe::message($action, $object);
-        
+	if(!empty(DB_USER))  {
+	        TRememberMe::message($action, $object);
+        }
         return 0;
     }
 }
