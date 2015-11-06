@@ -102,6 +102,36 @@ $form=new Form($db);
 $formCore = new TFormCore('auto','formSave', 'post');
 echo $formCore->hidden('action', 'save');
 
+// MANAGEMENT JAVASCRIPT BLOCKS
+?>
+<script type="text/javascript">
+	$(document).ready(function(){
+		var $select_type = $("select[id$='[type]']");
+		var id=prefix= null;
+		$select_type.on('change',function(){
+			id = $(this).attr('id').split('[');
+			id = id[1].split(']');
+			id = id[0];
+			prefix = 'tr#row_'+id;
+			$(prefix+' .nbday, ' + prefix+' .titre, ' + prefix+' .type, ' + prefix+' .message').hide();
+			switch($(this).val()){
+				case 'EVENT':
+				case 'EMAIL':
+					$(prefix+' .nbday').show();
+					$(prefix+' .titre').show();
+					$(prefix+' .message').show();
+					break;
+				case 'MSG':
+					$(prefix+' .type').show();
+					$(prefix+' .message').show();
+					break;
+				case 'EVAL':
+					break;
+			}
+		})
+	});
+</script>
+<?php
 $var=false;
 
 print '<table class="noborder" width="100%">';
@@ -119,39 +149,66 @@ print '</tr>';
     $TRemember = TRememberMe::getAll($PDOdb);
 
     foreach($TRemember as &$r) {
+    	// Gestion affichage type
+		$cssNBDAY = $cssTYPE= $cssTITRE = $cssMESSAGE = 'display:none;';
+		switch ($r->type){
+			case 'EVENT':
+			case 'EMAIL':
+				$cssNBDAY = '';
+				$cssTITRE = '';
+				$cssMESSAGE = '';
+				break;
+			case 'MSG':
+				$cssTYPE = '';
+				$cssMESSAGE = '';
+				break;
+			case 'EVAL':
+				break;
+		}
         
         $class = ($class == 'impair') ? 'pair' : 'impair';
         
         ?>
-        <tr class="<?php echo $class  ?>">
-            <td valign="top"><?php echo $formCore->combo('', 'TRemember['.$r->getId().'][type]', $r->TType, $r->type); ?><br />
-            <?php echo $formCore->texte('','TRemember['.$r->getId().'][trigger_code]' , $r->trigger_code, 25,50, '', 'trigger_code'); 
-            
-            if($r->type == 'EVENT') {
-                
-                echo '<br />'.$formCore->texte($langs->trans('NbDayAfter'),'TRemember['.$r->getId().'][nb_day_after]' , $r->nb_day_after, 3,5); 
-                
-            }
-            
+        <tr class="<?php echo $class  ?>" id="row_<?php echo $r->getId(); ?>">
+            <td valign="top">
+            	Type<br/>
+            	<?php echo $formCore->combo('', 'TRemember['.$r->getId().'][type]', $r->TType, $r->type); ?><br /><br/>
+            	Trigger<br/>
+            	<?php echo $formCore->texte('','TRemember['.$r->getId().'][trigger_code]' , $r->trigger_code, 25,50, '', 'trigger_code');
+                echo '<div class="nbday" style="'.$cssNBDAY.'"><br/>';
+                echo $langs->trans('NbDayAfter').'<br/>'.$formCore->texte('','TRemember['.$r->getId().'][nb_day_after]' , $r->nb_day_after, 3,5);
+				echo '</div>';
             ?></td>
-            <td valign="top"><?php echo $form->select_thirdparty_list($r->fk_societe,'TRemember_'.$r->getId().'_fk_soc', '', 1); ?>
-                <br />
+            <td valign="top">
+            	Société (facultatif)<br/>
+            	<?php echo $form->select_thirdparty_list($r->fk_societe,'TRemember_'.$r->getId().'_fk_soc', '', 1); ?><br /><br/>
+            	Utilisateur (facultatif)<br/>
                 <?php echo $form->select_dolusers( (empty($r->fk_user) ? -1 : $r->fk_user)  ,'TRemember_'.$r->getId().'_fk_user' ,1); ?><script type="text/javascript">
                  
                 </script></td>
             <td valign="top"><?php 
-                if($r->type != 'EVAL') {
-                    echo $formCore->combo('', 'TRemember['.$r->getId().'][type_msg]', $r->TTypeMessage, $r->type_msg).'<br />';
-                    echo $formCore->zonetexte('','TRemember['.$r->getId().'][message]' , $r->message, 50,5);
-                    
-                } 
+                echo '<div class="type" style="'.$cssTYPE.'">';
+                echo 'Type alert<br/>'.$formCore->combo('', 'TRemember['.$r->getId().'][type_msg]', $r->TTypeMessage, $r->type_msg);
+				echo '</div>';
+                echo '<div class="titre" style="'.$cssTITRE.'">';
+                echo 'Titre<br/>'.$formCore->texte('','TRemember['.$r->getId().'][titre]' , $r->titre, 25,50);
+				echo '</div>';
+				echo '<div class="message" style="'.$cssMESSAGE.'">';
+                echo 'Message<br/>'.$formCore->zonetexte('','TRemember['.$r->getId().'][message]' , $r->message, 50,5);
+				echo '<p>
+				Codes utilisables :<br/>
+				[societe_nom]
+				[societe_code_client]
+				[ref]
+				[ref_client]
+				[date]
+				</p>';
+				echo '</div>';
             ?></td>
             
-            <td valign="bottom"><?php 
+            <td valign="center"><?php 
                     echo $formCore->zonetexte($langs->trans('CodeToEvalBefore').'<br />','TRemember['.$r->getId().'][condition]' , $r->message_condition, 50,2); 
-                    //if($r->type == 'EVAL') {
-                        echo '<br />'.$formCore->zonetexte($langs->trans('CodeToEvalAfter').'<br />','TRemember['.$r->getId().'][message_code]' , $r->message_code, 50,2);
-                    //}       
+                    echo '<br />'.$formCore->zonetexte($langs->trans('CodeToEvalAfter').'<br />','TRemember['.$r->getId().'][message_code]' , $r->message_code, 50,2);   
              ?></td>
             
             <td valign="bottom"><?php echo '<a href="?action=delete&id='.$r->getId().'">'.img_delete().'</a>';  ?></td>

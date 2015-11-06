@@ -117,7 +117,7 @@ class modRememberMe extends DolibarrModules
 		// Array to add new pages in new tabs
 		// Example: $this->tabs = array('objecttype:+tabname1:Title1:mylangfile@rememberme:$user->rights->rememberme->read:/rememberme/mynewtab1.php?id=__ID__',  	// To add a new tab identified by code tabname1
         //                              'objecttype:+tabname2:Title2:mylangfile@rememberme:$user->rights->othermodule->read:/rememberme/mynewtab2.php?id=__ID__',  	// To add another new tab identified by code tabname2
-        //                              'objecttype:-tabname:NU:conditiontoremove');                                                     						// To remove an existing tab identified by code tabname
+        //                              'objecttype:-tabname:NU:conditiontoremove');                                                    						// To remove an existing tab identified by code tabname
 		// where objecttype can be
 		// 'categories_x'	  to add a tab in category view (replace 'x' by type of category (0=product, 1=supplier, 2=customer, 3=member)
 		// 'contact'          to add a tab in contact view
@@ -138,7 +138,7 @@ class modRememberMe extends DolibarrModules
 		// 'stock'            to add a tab in stock view
 		// 'thirdparty'       to add a tab in third party view
 		// 'user'             to add a tab in user view
-        $this->tabs = array();
+        $this->tabs = array('propal:+remembermepropal:RemberMe:rememberme@rememberme:$user->rights->propal->creer:/rememberme/remembermepropal.php?id=__ID__');   
 
         // Dictionaries
 	    if (! isset($conf->rememberme->enabled))
@@ -181,7 +181,6 @@ class modRememberMe extends DolibarrModules
 		// $this->rights[$r][4] = 'level1';				// In php code, permission will be checked by test if ($user->rights->permkey->level1->level2)
 		// $this->rights[$r][5] = 'level2';				// In php code, permission will be checked by test if ($user->rights->permkey->level1->level2)
 		// $r++;
-
 
 		// Main menu entries
 		$this->menu = array();			// List of menus to add

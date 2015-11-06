@@ -1,26 +1,42 @@
 <?php
 
+require_once DOL_DOCUMENT_ROOT .'/societe/class/societe.class.php';
+require_once DOL_DOCUMENT_ROOT .'/comm/propal/class/propal.class.php';
+
 class TRememberMe extends TObjetStd {
+	const TTags = array('[societe_nom]',
+				'[societe_code_client]',
+				'[ref]',
+				'[ref_client]',
+				'[date]'
+					);
+	
     function __construct() { /* declaration */
         global $langs,$db;
         parent::set_table(MAIN_DB_PREFIX.'rememberme');
         parent::add_champs('fk_societe,fk_user',array('index'=>true, 'type'=>'int'));
-        parent::add_champs('nb_day_after',array('type'=>'int'));
+        parent::add_champs('nb_day_after,fk_object,fk_parent',array('type'=>'int'));
         
-        parent::add_champs('trigger_code,type,type_event', array('index'=>true, 'type'=>'string', 'length'=>50));
+        parent::add_champs('trigger_code,type,type_event,type_object', array('index'=>true, 'type'=>'string', 'length'=>50));
         
-        parent::add_champs('message,message_condition,message_code', array('type'=>'text'));
+        parent::add_champs('titre,message,message_condition,message_code', array('type'=>'text'));
         
         parent::_init_vars('type_msg');
         parent::start();
+		
+		$this->titre = 'RememberMe - titre';
+		$this->message = 'Bonjour [societe_nom]'."\n".'
+Code client [societe_code_client]'."\n".'
+Propale ref client [ref]
+Propale date [date]';
         
         $this->type='MSG';
         $this->TType=array(
             'MSG'=>'Message écran'
             ,'EVENT'=>'Evènement agenda'
+            ,'EMAIL'=>'Envoi email'
             ,'EVAL'=>'Evaluation du code php (attention !)'
         );
-        
         
         $this->type_msg = 'mesgs';
         $this->TTypeMessage=array(
@@ -28,6 +44,7 @@ class TRememberMe extends TObjetStd {
             ,'warnings'=>'Alerte'
             ,'errors'=>'Erreur'
         );
+		$this->db = $db;
         
     }
     
@@ -52,14 +69,56 @@ class TRememberMe extends TObjetStd {
         
         return $TRes ;
     }
+	
+	static function getArrayModify(&$PDOdb, $Tab=array(), $replaceByChild=false, $TRes=array())
+	{
+	    foreach($Tab as $row) {
+	        $r=new TRememberMe;
+	        $r->load($PDOdb, $row->rowid);
+	        if($replaceByChild)
+	        	$TRes[$r->fk_parent] = $r;
+			else
+	        	$TRes[$r->getId()] = $r;
+	    }
+		return $TRes;
+	}
+	
+    /**
+     *  Fetch all triggers for current object
+     *
+     *  @param	CommonObject	$object			Object used for search
+     *  @param	TPDOdb			$PDOdb			Abricot db object
+     *  @return int         					empty array if KO, array if OK
+     */
+    static function fetchAllForObject(&$PDOdb, $object) {
+    	$TRes = array();
+        if(isset($object))
+		{
+			$type_object=$object->element;
+	        
+	        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme WHERE trigger_code LIKE '%".$type_object."%'";
+	        $sql.=" AND fk_parent=0";
+	        $sql.=" ORDER BY rowid ASC";
+	        
+	        $Tab = $PDOdb->ExecuteAsArray($sql);
+	        $TRes = self::getArrayModify($PDOdb, $Tab);
+	        
+	        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme WHERE trigger_code LIKE '%".$type_object."%'";
+	        $sql.=" AND fk_parent<>0";
+	        $sql.=" AND fk_object=".$object->id;
+	        $sql.=" AND type_object='".$type_object."'";
+	        $sql.=" ORDER BY rowid ASC";
+	        $Tab = $PDOdb->ExecuteAsArray($sql);
+	        $TRes = self::getArrayModify($PDOdb, $Tab, true, $TRes);
+		}
+		return $TRes;
+    }
     
     static function message($action, &$object, $type='') {
         global $user, $db;
         
         $PDOdb = new TPDOdb;
-        
-        $sql = "SELECT fk_societe,fk_user,message,type_msg,type,message_condition,message_code,nb_day_after
-                FROM ".MAIN_DB_PREFIX."rememberme 
+        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme 
                 WHERE trigger_code='".$action."'";
         if(!empty($type)) $sql.=" AND  type = '".$type."' "; 
         
@@ -85,7 +144,7 @@ class TRememberMe extends TObjetStd {
                  
                  $actioncomm->userownerid = $user->id;
                  $actioncomm->type_code='AC_OTH';
-                 $actioncomm->label = 'RememberMe' ;
+                 $actioncomm->label = 'RememberMe - '.$row->titre ;
                  
                  $actioncomm->elementtype=$object->element;
                  $actioncomm->fk_element = $object->id;
@@ -96,9 +155,36 @@ class TRememberMe extends TObjetStd {
                  $actioncomm->durationp = 0;
                  
                  $actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
+                 $actioncomm->note = $row->message;
                  
                  $actioncomm->add($user);
                 
+            }
+            else if($row->type == 'EMAIL') {
+				$societe = new Societe($db);
+				$actioncomm=new ActionComm($db);
+				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
+				$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
+				 
+				$actioncomm->userownerid = $user->id;
+				$actioncomm->type_code='AC_EMAIL';
+				
+				$actioncomm->elementtype=$object->element;
+				$actioncomm->fk_element = $object->id;
+				
+				$societe->fetch($actioncomm->socid);
+				
+				$actioncomm->progress = 0;
+				
+				$actioncomm->durationp = 0;
+				
+				$object2->date = date("Y-m-d", $object2->date);
+				$newval = array("{$societe->name}", "{$societe->code_client}", "{$object->ref}", "{$object->ref_client}", "{$object->date}");
+				$actioncomm->label = str_replace(self::TTags, $newval, $row->titre);
+				$actioncomm->note = str_replace(self::TTags, $newval, $row->message);
+				
+				$actioncomm->add($user);
+
             }
             
             
@@ -107,9 +193,7 @@ class TRememberMe extends TObjetStd {
             }
             
             
-        }
-        
-        
+        }        
         $PDOdb->close();        
       
     }
