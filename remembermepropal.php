@@ -57,7 +57,6 @@ if ($error)
 
 $PDOdb=new TPDOdb;
 
-
 switch($action) {	
 	case 'new':
 		$remember=new TRememberMe;
@@ -97,8 +96,7 @@ switch($action) {
 		break;
 	case 'view':
 	default:
-		$TRemember=new TRememberMe;
-		$TRemember->fetchAllForObject($PDOdb, $object);
+		$TRemember = TRememberMe::fetchAllForObject($PDOdb, $object);
 		
 		_fiche($PDOdb, $object, $TRemember, 'view');
 		
@@ -106,47 +104,52 @@ switch($action) {
 }
 
 
-function _fiche(&$PDOdb, $propal, $TRemember = array(), $mode='edit') {
+function _fiche(&$PDOdb, $object, $TRemember = array(), $mode='edit') {
 	global $langs,$db,$conf,$user,$hookmanager;
 	/***************************************************
 	* PAGE
 	*
 	* Put here all code to build page
 	****************************************************/
-	$parameters = array('id'=>$propal->id);
-	$reshook = $hookmanager->executeHooks('doActions',$parameters,$propal,$mode);    // Note that $action and $object may have been modified by hook
+	$parameters = array('id'=>$object->id);
+	$reshook = $hookmanager->executeHooks('doActions',$parameters,$object,$mode);    // Note that $action and $object may have been modified by hook
 	
 	llxHeader('',$langs->trans('Propal'),'','');
-	$head = propal_prepare_head($propal);
+	$head = propal_prepare_head($object);
 	dol_fiche_head($head, 'remembermepropal', $langs->trans('Proposal'), 0, 'propal');
 	
-	?>
-	<style type="text/css">
-		#assetChildContener .OFMaster {
-			
-			background:#fff;
-			-webkit-box-shadow: 4px 4px 5px 0px rgba(50, 50, 50, 0.52);
-			-moz-box-shadow:    4px 4px 5px 0px rgba(50, 50, 50, 0.52);
-			box-shadow:         4px 4px 5px 0px rgba(50, 50, 50, 0.52);
-			
-			margin-bottom:20px;
-		}
-	</style>
-	<?php
-	
+	$TBS=new TTemplateTBS();
+	$TRemember = _fiche_ligne_rememberme_item($object, $TRemember);
 	print $TBS->render('tpl/remember_object.tpl.php'
-		,array()
 		,array(
 			'TRemember'=> $TRemember
-			,'view'=>array(
+			)
+		,array(
+			'view'=>array(
 				'mode'=>$mode
-				,'status'=>$propal->status
+				,'statut'=>$object->statut
 				,'user_id'=>$user->id
 			)
 		)
 	);
 	
-	echo $form->end_form();	
-	
 	llxFooter('$Date: 2011/07/31 22:21:57 $ - $Revision: 1.19 $');
+}
+
+function _fiche_ligne_rememberme_item($object, &$TRemember)
+{
+    $res = array();
+	
+    foreach($TRemember as $item)
+    {
+        $res[] = array(
+            'rowid' => $item->rowid
+            ,'titre' => TRememberMe::changeTags($object, $item->titre)
+            ,'description' => nl2br(TRememberMe::changeTags($object, $item->message))
+            ,'type' => $item->type
+            ,'nb_day_after' => $item->nb_day_after
+            ,'link' => dol_buildpath('rememberme/admin/rememberme_setup.php',2)           
+        );
+    }
+    return $res;
 }

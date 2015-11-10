@@ -70,15 +70,18 @@ Propale date [date]';
         return $TRes ;
     }
 	
-	static function getArrayModify(&$PDOdb, $Tab=array(), $replaceByChild=false, $TRes=array())
+	static function getArrayModify(&$PDOdb, $Tab=array(), $object)
 	{
+		$TRes=array();
 	    foreach($Tab as $row) {
 	        $r=new TRememberMe;
+			$r->rowid = $row->rowid;
 	        $r->load($PDOdb, $row->rowid);
-	        if($replaceByChild)
-	        	$TRes[$r->fk_parent] = $r;
-			else
+	        
+			if($r->fk_parent == 0)
 	        	$TRes[$r->getId()] = $r;
+			else if($object->id == $r->fk_object)
+	        	$TRes[$r->fk_parent] = $r;
 	    }
 		return $TRes;
 	}
@@ -95,21 +98,13 @@ Propale date [date]';
         if(isset($object))
 		{
 			$type_object=$object->element;
-	        
-	        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme WHERE trigger_code LIKE '%".$type_object."%'";
-	        $sql.=" AND fk_parent=0";
-	        $sql.=" ORDER BY rowid ASC";
+			
+	        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme";
+	        $sql.= " WHERE trigger_code LIKE '%".$type_object."%'";
+	        $sql.= " ORDER BY rowid ASC";
 	        
 	        $Tab = $PDOdb->ExecuteAsArray($sql);
-	        $TRes = self::getArrayModify($PDOdb, $Tab);
-	        
-	        $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme WHERE trigger_code LIKE '%".$type_object."%'";
-	        $sql.=" AND fk_parent<>0";
-	        $sql.=" AND fk_object=".$object->id;
-	        $sql.=" AND type_object='".$type_object."'";
-	        $sql.=" ORDER BY rowid ASC";
-	        $Tab = $PDOdb->ExecuteAsArray($sql);
-	        $TRes = self::getArrayModify($PDOdb, $Tab, true, $TRes);
+	        $TRes = self::getArrayModify($PDOdb, $Tab, $object);
 		}
 		return $TRes;
     }
@@ -161,27 +156,22 @@ Propale date [date]';
                 
             }
             else if($row->type == 'EMAIL') {
-				$societe = new Societe($db);
 				$actioncomm=new ActionComm($db);
 				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 				$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
 				 
 				$actioncomm->userownerid = $user->id;
-				$actioncomm->type_code='AC_EMAIL';
+				$actioncomm->type_code='AC_RMB_EMAIL';
 				
 				$actioncomm->elementtype=$object->element;
 				$actioncomm->fk_element = $object->id;
-				
-				$societe->fetch($actioncomm->socid);
 				
 				$actioncomm->progress = 0;
 				
 				$actioncomm->durationp = 0;
 				
-				$object2->date = date("Y-m-d", $object2->date);
-				$newval = array("{$societe->name}", "{$societe->code_client}", "{$object->ref}", "{$object->ref_client}", "{$object->date}");
-				$actioncomm->label = str_replace(self::TTags, $newval, $row->titre);
-				$actioncomm->note = str_replace(self::TTags, $newval, $row->message);
+				$actioncomm->label = self::changeTags($object, $row->titre);
+				$actioncomm->note = self::changeTags($object, $row->message);
 				
 				$actioncomm->add($user);
 
@@ -197,5 +187,16 @@ Propale date [date]';
         $PDOdb->close();        
       
     }
+
+	static function changeTags($object, $val)
+	{
+		global $db;
+		$societe = new Societe($db);
+		$socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
+		$societe->fetch($socid);
+		$date = date("Y-m-d", $object->date);
+		$newval = array("{$societe->name}", "{$societe->code_client}", "{$object->ref}", "{$object->ref_client}", "{$date}");
+		return str_replace(self::TTags, $newval, $val);
+	}
     
 }

@@ -58,7 +58,7 @@ class modRememberMe extends DolibarrModules
 		// Module description, used if translation string 'ModuleXXXDesc' not found (where XXX is value of numeric property 'numero' of module)
 		$this->description = "Description of module RememberMe";
 		// Possible values for version are: 'development', 'experimental', 'dolibarr' or version
-		$this->version = '1.0';
+		$this->version = '1.1';
 		// Key used in llx_const table to save module status enabled/disabled (where MYMODULE is value of property name of module in uppercase)
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		// Where to store the module in setup page (0=common,1=interface,2=others,3=very specific)
@@ -138,7 +138,7 @@ class modRememberMe extends DolibarrModules
 		// 'stock'            to add a tab in stock view
 		// 'thirdparty'       to add a tab in third party view
 		// 'user'             to add a tab in user view
-        $this->tabs = array('propal:+remembermepropal:RemberMe:rememberme@rememberme:$user->rights->propal->creer:/rememberme/remembermepropal.php?id=__ID__');   
+        $this->tabs = array('propal:+remembermepropal:RememberMe:rememberme@rememberme:$user->rights->propal->creer:/rememberme/remembermepropal.php?id=__ID__');   
 
         // Dictionaries
 	    if (! isset($conf->rememberme->enabled))
@@ -253,11 +253,22 @@ class modRememberMe extends DolibarrModules
         dol_include_once('/rememberme/config.php');
 
         $PDOdb=new TPDOdb;
-
         $o=new TRememberMe;
+		
         $o->init_db_by_vars($PDOdb);
-
-
+		$nextid = 0;
+		$req = 'SELECT * FROM '.MAIN_DB_PREFIX.'c_actioncomm WHERE code = \'AC_RMB_EMAIL\'';
+		$ret = $PDOdb->ExecuteAsArray($req);
+		if(sizeof($ret) == 0)
+		{
+			$req = 'SELECT MAX(id) as max FROM '.MAIN_DB_PREFIX.'c_actioncomm';
+			$ret = $PDOdb->ExecuteAsArray($req);
+			$nextid = $ret[0]->max + 1;
+			$req = 'INSERT INTO '.MAIN_DB_PREFIX.'c_actioncomm (id, code, type, libelle, module, active, todo, position)';
+			$req.= " VALUES (".$nextid.", 'AC_RMB_EMAIL', 'rememberme', 'Email a envoyer automatiquement', 'rememberme', 1, NULL, 200)";
+			$PDOdb->Execute($req);
+		}
+		
 		$result=$this->_load_tables('/rememberme/sql/');
 
 		return $this->_init($sql, $options);
