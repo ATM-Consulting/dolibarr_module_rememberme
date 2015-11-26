@@ -112,7 +112,7 @@ Propale date [date]';
         if(!empty($type)) $sql.=" AND  type = '".$type."' "; 
         
         $Tab = $PDOdb->ExecuteAsArray($sql);
-                
+		
         foreach($Tab as $row) {
             //var_dump($row);
             if($row->fk_societe>0 && ($object->fk_soc!=$row->fk_societe && $object->socid!=$row->fk_societe ) ) continue; // pas pour lui ce message
@@ -167,8 +167,6 @@ Propale date [date]';
 				$actioncomm->label = self::changeTags($object, $row->titre);
 				$actioncomm->note = self::changeTags($object, $row->message);
 				
-				var_dump($object->newref);
-				exit;
 				$actioncomm->add($user);
 
             }
