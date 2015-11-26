@@ -4,12 +4,6 @@ require_once DOL_DOCUMENT_ROOT .'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT .'/comm/propal/class/propal.class.php';
 
 class TRememberMe extends TObjetStd {
-	const TTags = array('[societe_nom]',
-				'[societe_code_client]',
-				'[ref]',
-				'[ref_client]',
-				'[date]'
-					);
 	
     function __construct() { /* declaration */
         global $langs,$db;
@@ -197,8 +191,9 @@ Propale date [date]';
 		$socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 		$societe->fetch($socid);
 		$date = date("Y-m-d", $object->date);
-		$newval = array("{$societe->name}", "{$societe->code_client}", "{$object->newref}", "{$object->ref_client}", "{$date}");
-		return str_replace(self::TTags, $newval, $val);
+		$TNewval = array("{$societe->name}", "{$societe->code_client}", "{$object->newref}", "{$object->ref_client}", "{$date}");
+		$TTags = array('[societe_nom]','[societe_code_client]','[ref]','[ref_client]','[date]');
+		return str_replace($TTags, $TNewval, $val);
 	}
     
 }
