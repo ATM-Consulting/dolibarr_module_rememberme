@@ -173,6 +173,8 @@ Propale date [date]';
 				$actioncomm->label = self::changeTags($object, $row->titre);
 				$actioncomm->note = self::changeTags($object, $row->message);
 				
+				var_dump($object->newref);
+				exit;
 				$actioncomm->add($user);
 
             }
@@ -195,7 +197,7 @@ Propale date [date]';
 		$socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 		$societe->fetch($socid);
 		$date = date("Y-m-d", $object->date);
-		$newval = array("{$societe->name}", "{$societe->code_client}", "{$object->ref}", "{$object->ref_client}", "{$date}");
+		$newval = array("{$societe->name}", "{$societe->code_client}", "{$object->newref}", "{$object->ref_client}", "{$date}");
 		return str_replace(self::TTags, $newval, $val);
 	}
     
