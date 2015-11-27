@@ -113,7 +113,30 @@ Propale date [date]';
         
         $Tab = $PDOdb->ExecuteAsArray($sql);
 		
+		$sql = "SELECT id, location FROM ".MAIN_DB_PREFIX."actioncomm
+			    WHERE location LIKE '%rememberme%'
+			    AND datep > NOW()";
+					$PDOdb->Execute($sql);
+        $TActioncomm = $PDOdb->ExecuteAsArray($sql);
+		
         foreach($Tab as $row) {
+	        switch($action)
+			{
+				case preg_match('/VALIDATE/', strtoupper($action))?true:false:
+					foreach($TActioncomm as $OneActioncomm) {
+						$location = $OneActioncomm->location;
+						$Tlocation = explode('|',$location);
+						if($Tlocation[1] == $row->rowid)
+						{
+							$actioncomm=new ActionComm($db);
+							$actioncomm->fetch($OneActioncomm->id);
+							$actioncomm->delete();
+						}
+					}
+					break;
+				default:
+					break;
+			}
             //var_dump($row);
             if($row->fk_societe>0 && ($object->fk_soc!=$row->fk_societe && $object->socid!=$row->fk_societe ) ) continue; // pas pour lui ce message
             if($row->fk_user>0 && $row->fk_user!=$user->id)continue; // non plus
@@ -127,26 +150,27 @@ Propale date [date]';
             if($row->type == 'MSG') setEventMessage($row->message, $row->type_msg);
             else if($row->type == 'EVENT') {
                     
-                 $actioncomm=new ActionComm($db);    
-                 $actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
-                 //$a->datef = $t_end;
-                 
-                 $actioncomm->userownerid = $user->id;
-                 $actioncomm->type_code='AC_OTH';
-                 $actioncomm->label = 'RememberMe - '.$row->titre ;
-                 
-                 $actioncomm->elementtype=$object->element;
-                 $actioncomm->fk_element = $object->id;
-                 $actioncomm->fk_project = $object->fk_project;
-                
-                 $actioncomm->progress = 0;
-                 
-                 $actioncomm->durationp = 0;
-                 
-                 $actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
-                 $actioncomm->note = $row->message;
-                 
-                 $actioncomm->add($user);
+				$actioncomm=new ActionComm($db);    
+				$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
+				//$a->datef = $t_end;
+				
+				$actioncomm->userownerid = $user->id;
+				$actioncomm->type_code='AC_OTH';
+				$actioncomm->label = 'RememberMe - '.$row->titre ;
+				
+				$actioncomm->elementtype=$object->element;
+				$actioncomm->fk_element = $object->id;
+				$actioncomm->fk_project = $object->fk_project;
+				
+				$actioncomm->progress = 0;
+				
+				$actioncomm->durationp = 0;
+				$actioncomm->location = 'rememberme|'.$row->rowid;
+				
+				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
+				$actioncomm->note = $row->message;
+				
+				$actioncomm->add($user);
                 
             }
             else if($row->type == 'EMAIL') {
@@ -163,6 +187,7 @@ Propale date [date]';
 				$actioncomm->progress = 0;
 				
 				$actioncomm->durationp = 0;
+				$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->label = self::changeTags($object, $row->titre);
 				$actioncomm->note = self::changeTags($object, $row->message);
