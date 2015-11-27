@@ -113,16 +113,20 @@ Propale date [date]';
         
         $Tab = $PDOdb->ExecuteAsArray($sql);
 		
+		// Requete pour récuperer les actioncomm futurs
 		$sql = "SELECT id, location FROM ".MAIN_DB_PREFIX."actioncomm
 			    WHERE location LIKE '%rememberme%'
 			    AND datep > NOW()";
-					$PDOdb->Execute($sql);
         $TActioncomm = $PDOdb->ExecuteAsArray($sql);
 		
         foreach($Tab as $row) {
+        	// Switch pour gérer des spécificité en fonction des triggers
 	        switch($action)
 			{
 				case preg_match('/VALIDATE/', strtoupper($action))?true:false:
+					// On parcours les actioncomm futurs pour trouver celles qui correspondent au trigger
+					// et si ça correspond on supprime l'évenement
+					// Précision : les actioncomm qui contiennent rememberme en location avec id trigger, sont forcément des emails.
 					foreach($TActioncomm as $OneActioncomm) {
 						$location = $OneActioncomm->location;
 						$Tlocation = explode('|',$location);
@@ -165,6 +169,7 @@ Propale date [date]';
 				$actioncomm->progress = 0;
 				
 				$actioncomm->durationp = 0;
+				// Utile pour le suivi de trigger
 				$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
@@ -187,6 +192,7 @@ Propale date [date]';
 				$actioncomm->progress = 0;
 				
 				$actioncomm->durationp = 0;
+				// Utile pour le suivi de trigger
 				$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->label = self::changeTags($object, $row->titre);
