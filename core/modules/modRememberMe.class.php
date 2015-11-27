@@ -58,7 +58,7 @@ class modRememberMe extends DolibarrModules
 		// Module description, used if translation string 'ModuleXXXDesc' not found (where XXX is value of numeric property 'numero' of module)
 		$this->description = "Description of module RememberMe";
 		// Possible values for version are: 'development', 'experimental', 'dolibarr' or version
-		$this->version = '1.0';
+		$this->version = '1.1';
 		// Key used in llx_const table to save module status enabled/disabled (where MYMODULE is value of property name of module in uppercase)
 		$this->const_name = 'MAIN_MODULE_'.strtoupper($this->name);
 		// Where to store the module in setup page (0=common,1=interface,2=others,3=very specific)
@@ -117,7 +117,7 @@ class modRememberMe extends DolibarrModules
 		// Array to add new pages in new tabs
 		// Example: $this->tabs = array('objecttype:+tabname1:Title1:mylangfile@rememberme:$user->rights->rememberme->read:/rememberme/mynewtab1.php?id=__ID__',  	// To add a new tab identified by code tabname1
         //                              'objecttype:+tabname2:Title2:mylangfile@rememberme:$user->rights->othermodule->read:/rememberme/mynewtab2.php?id=__ID__',  	// To add another new tab identified by code tabname2
-        //                              'objecttype:-tabname:NU:conditiontoremove');                                                     						// To remove an existing tab identified by code tabname
+        //                              'objecttype:-tabname:NU:conditiontoremove');                                                    						// To remove an existing tab identified by code tabname
 		// where objecttype can be
 		// 'categories_x'	  to add a tab in category view (replace 'x' by type of category (0=product, 1=supplier, 2=customer, 3=member)
 		// 'contact'          to add a tab in contact view
@@ -138,7 +138,7 @@ class modRememberMe extends DolibarrModules
 		// 'stock'            to add a tab in stock view
 		// 'thirdparty'       to add a tab in third party view
 		// 'user'             to add a tab in user view
-        $this->tabs = array();
+        $this->tabs = array('propal:+remembermepropal:RememberMe:rememberme@rememberme:$user->rights->propal->creer:/rememberme/remembermepropal.php?id=__ID__');   
 
         // Dictionaries
 	    if (! isset($conf->rememberme->enabled))
@@ -181,7 +181,6 @@ class modRememberMe extends DolibarrModules
 		// $this->rights[$r][4] = 'level1';				// In php code, permission will be checked by test if ($user->rights->permkey->level1->level2)
 		// $this->rights[$r][5] = 'level2';				// In php code, permission will be checked by test if ($user->rights->permkey->level1->level2)
 		// $r++;
-
 
 		// Main menu entries
 		$this->menu = array();			// List of menus to add
@@ -254,11 +253,22 @@ class modRememberMe extends DolibarrModules
         dol_include_once('/rememberme/config.php');
 
         $PDOdb=new TPDOdb;
-
         $o=new TRememberMe;
+		
         $o->init_db_by_vars($PDOdb);
-
-
+		$nextid = 0;
+		$req = 'SELECT * FROM '.MAIN_DB_PREFIX.'c_actioncomm WHERE code = \'AC_RMB_EMAIL\'';
+		$ret = $PDOdb->ExecuteAsArray($req);
+		if(sizeof($ret) == 0)
+		{
+			$req = 'SELECT MAX(id) as max FROM '.MAIN_DB_PREFIX.'c_actioncomm';
+			$ret = $PDOdb->ExecuteAsArray($req);
+			$nextid = $ret[0]->max + 1;
+			$req = 'INSERT INTO '.MAIN_DB_PREFIX.'c_actioncomm (id, code, type, libelle, module, active, todo, position)';
+			$req.= " VALUES (".$nextid.", 'AC_RMB_EMAIL', 'rememberme', 'Email a envoyer automatiquement', 'rememberme', 1, NULL, 200)";
+			$PDOdb->Execute($req);
+		}
+		
 		$result=$this->_load_tables('/rememberme/sql/');
 
 		return $this->_init($sql, $options);
