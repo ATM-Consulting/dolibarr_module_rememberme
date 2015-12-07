@@ -17,7 +17,9 @@
 	$langs->load('mails');
 	if(!empty($debug))echo '<br/><br/>';
 	$PDOdb=new TPDOdb;
-	
+	$dontsend=false;
+	$send=null;
+
 	$sql = "SELECT id";
 	$sql.=" FROM ".MAIN_DB_PREFIX."actioncomm";
 	$sql.=" WHERE code = 'AC_RMB_EMAIL'";
@@ -40,6 +42,25 @@
 				$error = "La société ".$societe->name." n'a pas d'email définit sur sa fiche";
 			}else{
 				$emailto = $societe->email;
+				/*********************************
+				 * 
+				 * Spécifique céribois, 
+				 * Peut évoluer En général
+				 * avec un champs pour rememberme
+				 * label : Ne pas recevoir les documents par email
+				 * type : boolean
+				 * name : options_cant_send_doc_by_mail
+				 * default : 0 (on reçoit tout)
+				 * 
+				 * *******************************/
+				if($conf->cliceribois->enabled)
+				{
+					if($societe->array_options['options_cant_send_doc_by_mail'])
+					{
+						$error = "La société ".$societe->name." a définit qu'elle ne souhaitait pas recevoir d'email";
+						$dontsend=true;
+					}
+				}
 			}
 		}else{
 				$error = "L'évènement ".$actioncomm->ref." (".$actioncomm->label.") n'a pas de société associé";
@@ -61,7 +82,7 @@
 			$corps.= $excorps;
 		}
 		$abricotMail = new TReponseMail($mysoc->email,$emailto,$titre,$corps);
-		$send = $abricotMail->send();
+		if(!$dontsend)$send = $abricotMail->send();
 		
 		if($send)
 		{
