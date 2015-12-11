@@ -2,6 +2,7 @@
 
 require_once DOL_DOCUMENT_ROOT .'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT .'/comm/propal/class/propal.class.php';
+require_once DOL_DOCUMENT_ROOT .'/comm/action/class/actioncomm.class.php';
 
 class TRememberMe extends TObjetStd {
 	
@@ -113,28 +114,32 @@ Propale date [date]';
         
         $Tab = $PDOdb->ExecuteAsArray($sql);
 		
-		// Requete pour récuperer les actioncomm futurs
-		$sql = "SELECT id, location FROM ".MAIN_DB_PREFIX."actioncomm
-			    WHERE location LIKE '%rememberme%'
-			    AND datep > NOW()";
-        $TActioncomm = $PDOdb->ExecuteAsArray($sql);
 		
         foreach($Tab as $row) {
         	// Switch pour gérer des spécificité en fonction des triggers
 	        switch($action)
 			{
 				case preg_match('/VALIDATE/', strtoupper($action))?true:false:
-					// On parcours les actioncomm futurs pour trouver celles qui correspondent au trigger
-					// et si ça correspond on supprime l'évenement
-					// Précision : les actioncomm qui contiennent rememberme en location avec id trigger, sont forcément des emails.
-					foreach($TActioncomm as $OneActioncomm) {
-						$location = $OneActioncomm->location;
-						$Tlocation = explode('|',$location);
-						if($Tlocation[1] == $row->rowid)
+					
+					// Requete pour récuperer les actioncomm futurs
+					$TRemembermeElement = TRememberMeElement::getAll($PDOdb, $row->rowid, 'actioncomm');
+					
+					// On parcours tout et on test pour delete
+					foreach($TRemembermeElement as $remembermeElement) {
+						$actioncomm=new ActionComm($db);
+						$actioncomm->fetch($remembermeElement->fk_source);
+						if(!empty($actioncomm->id))
 						{
-							$actioncomm=new ActionComm($db);
-							$actioncomm->fetch($OneActioncomm->id);
-							$actioncomm->delete();
+							$actiondate = strtotime(date('Y-m-d', $actioncomm->datep)); // Date de l event en affichage Y-m-d
+							$dateactuel = strtotime(date('Y-m-d')); // Date du jour affichée Y-m-d
+							if($actiondate >= $dateactuel && $actioncomm->percentage != 100)
+							{
+								$remembermeElement->delete($PDOdb);
+								$actioncomm->delete();
+							}
+						}else{
+							// Un actioncomm a été delete manuellement on vide element
+							$remembermeElement->delete($PDOdb);
 						}
 					}
 					break;
@@ -159,8 +164,8 @@ Propale date [date]';
 				//$a->datef = $t_end;
 				
 				$actioncomm->userownerid = $user->id;
-				$actioncomm->type_code='AC_OTH';
-				$actioncomm->label = 'RememberMe - '.$row->titre ;
+				$actioncomm->type_code='AC_RMB_OTHER';
+				$actioncomm->label = $row->titre ;
 				
 				$actioncomm->elementtype=$object->element;
 				$actioncomm->fk_element = $object->id;
@@ -170,12 +175,18 @@ Propale date [date]';
 				
 				$actioncomm->durationp = 0;
 				// Utile pour le suivi de trigger
-				$actioncomm->location = 'rememberme|'.$row->rowid;
+				//$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 				$actioncomm->note = $row->message;
 				
 				$actioncomm->add($user);
+				$rememberme_element=new TRememberMeElement;
+				$rememberme_element->targettype='rememberme';
+				$rememberme_element->sourcetype='actioncomm';
+				$rememberme_element->fk_target=$row->rowid;
+				$rememberme_element->fk_source=$actioncomm->id;
+				$rememberme_element->save($PDOdb);
                 
             }
             else if($row->type == 'EMAIL') {
@@ -193,12 +204,18 @@ Propale date [date]';
 				
 				$actioncomm->durationp = 0;
 				// Utile pour le suivi de trigger
-				$actioncomm->location = 'rememberme|'.$row->rowid;
+				//$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->label = self::changeTags($object, $row->titre);
 				$actioncomm->note = self::changeTags($object, $row->message);
 				
 				$actioncomm->add($user);
+				$rememberme_element=new TRememberMeElement;
+				$rememberme_element->targettype='rememberme';
+				$rememberme_element->sourcetype='actioncomm';
+				$rememberme_element->fk_target=$row->rowid;
+				$rememberme_element->fk_source=$actioncomm->id;
+				$rememberme_element->save($PDOdb);
 
             }
             
@@ -224,5 +241,50 @@ Propale date [date]';
 		$TTags = array('[societe_nom]','[societe_code_client]','[ref]','[ref_client]','[date]');
 		return str_replace($TTags, $TNewval, $val);
 	}
+    
+}
+
+
+/*******************************************
+ * 
+ * 		   CLASS TRemembermeElement
+ * 
+ * *****************************************/
+ 
+class TRememberMeElement extends TObjetStd {
+	
+    function __construct() { /* declaration */
+        global $langs,$db;
+        parent::set_table(MAIN_DB_PREFIX.'rememberme_element');
+        parent::add_champs('fk_source,fk_target',array('index'=>true, 'type'=>'int'));
+        parent::add_champs('sourcetype,targettype', array('index'=>true, 'type'=>'string', 'length'=>50)); 
+		
+        parent::start();
+		
+		$this->db = $db;
+        
+	}
+    
+    static function getAll(&$PDOdb, $fk_target=null, $sourcetype='', $fk_source=null, $targettype='') {
+        
+        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE 1 ";
+        
+        if(!empty($sourcetype)) $sql.=" AND  sourcetype = '".$sourcetype."' "; 
+        if(!empty($fk_source)) $sql.=" AND  fk_source = ".$fk_source; 
+        if(!empty($targettype)) $sql.=" AND  targettype = '".$targettype."' "; 
+        if(!empty($fk_target)) $sql.=" AND  fk_target = ".$fk_target; 
+        
+        $Tab = $PDOdb->ExecuteAsArray($sql);
+        
+        $TRes = array();
+        foreach($Tab as $row) {
+            $r=new TRememberMeElement;
+            $r->load($PDOdb, $row->rowid);
+            
+            $TRes[] = $r;
+        }
+        
+        return $TRes ;
+    }
     
 }
