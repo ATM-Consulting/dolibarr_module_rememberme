@@ -2,7 +2,7 @@
 
 require_once DOL_DOCUMENT_ROOT .'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT .'/comm/propal/class/propal.class.php';
-require_once DOL_DOCUMENT_ROOT .'/comm/action/class/action.class.php';
+require_once DOL_DOCUMENT_ROOT .'/comm/action/class/actioncomm.class.php';
 
 class TRememberMe extends TObjetStd {
 	
@@ -122,18 +122,24 @@ Propale date [date]';
 				case preg_match('/VALIDATE/', strtoupper($action))?true:false:
 					
 					// Requete pour récuperer les actioncomm futurs
-					$TRemembermeElement = TRememberMeElement::getAll($PDOdb);
-					// On parcours les actioncomm futurs pour trouver celles qui correspondent au trigger
-					// et si ça correspond on supprime l'évenement
-					// Précision : les actioncomm qui contiennent rememberme en location avec id trigger, sont forcément des emails.
+					$TRemembermeElement = TRememberMeElement::getAll($PDOdb, $row->rowid, 'actioncomm');
+					
+					// On parcours tout et on test pour delete
 					foreach($TRemembermeElement as $remembermeElement) {
-						$location = $OneActioncomm->location;
-						$Tlocation = explode('|',$location);
-						if($remembermeElement['sourcetype'] == 'actioncomm')
+						$actioncomm=new ActionComm($db);
+						$actioncomm->fetch($remembermeElement->fk_source);
+						if(!empty($actioncomm->id))
 						{
-							$actioncomm=new ActionComm($db);
-							$actioncomm->fetch($remembermeElement['fk_source']);
-							$actioncomm->delete();
+							$actiondate = strtotime(date('Y-m-d', $actioncomm->datep)); // Date de l event en affichage Y-m-d
+							$dateactuel = strtotime(date('Y-m-d')); // Date du jour affichée Y-m-d
+							if($actiondate >= $dateactuel && $actioncomm->percentage != 100)
+							{
+								$remembermeElement->delete($PDOdb);
+								$actioncomm->delete();
+							}
+						}else{
+							// Un actioncomm a été delete manuellement on vide element
+							$remembermeElement->delete($PDOdb);
 						}
 					}
 					break;
@@ -259,18 +265,19 @@ class TRememberMeElement extends TObjetStd {
         
 	}
     
-    static function getAll(&$PDOdb, $sourcetype='', $fk_source=null) {
+    static function getAll(&$PDOdb, $fk_target=null, $sourcetype='', $fk_source=null, $targettype='') {
         
         $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE 1 ";
         
         if(!empty($sourcetype)) $sql.=" AND  sourcetype = '".$sourcetype."' "; 
         if(!empty($fk_source)) $sql.=" AND  fk_source = ".$fk_source; 
+        if(!empty($targettype)) $sql.=" AND  targettype = '".$targettype."' "; 
+        if(!empty($fk_target)) $sql.=" AND  fk_target = ".$fk_target; 
         
         $Tab = $PDOdb->ExecuteAsArray($sql);
         
         $TRes = array();
         foreach($Tab as $row) {
-            
             $r=new TRememberMeElement;
             $r->load($PDOdb, $row->rowid);
             
