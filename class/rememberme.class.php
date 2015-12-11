@@ -159,8 +159,8 @@ Propale date [date]';
 				//$a->datef = $t_end;
 				
 				$actioncomm->userownerid = $user->id;
-				$actioncomm->type_code='AC_OTH';
-				$actioncomm->label = 'RememberMe - '.$row->titre ;
+				$actioncomm->type_code='AC_RMB_OTHER';
+				$actioncomm->label = $row->titre ;
 				
 				$actioncomm->elementtype=$object->element;
 				$actioncomm->fk_element = $object->id;
@@ -170,12 +170,18 @@ Propale date [date]';
 				
 				$actioncomm->durationp = 0;
 				// Utile pour le suivi de trigger
-				$actioncomm->location = 'rememberme|'.$row->rowid;
+				//$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 				$actioncomm->note = $row->message;
 				
 				$actioncomm->add($user);
+				$rememberme_element=new TRememberMeElement;
+				$rememberme_element->targettype='rememberme';
+				$rememberme_element->sourcetype='actioncomm';
+				$rememberme_element->fk_target=$row->rowid;
+				$rememberme_element->fk_source=$actioncomm->id;
+				$rememberme_element->save($PDOdb);
                 
             }
             else if($row->type == 'EMAIL') {
@@ -193,12 +199,18 @@ Propale date [date]';
 				
 				$actioncomm->durationp = 0;
 				// Utile pour le suivi de trigger
-				$actioncomm->location = 'rememberme|'.$row->rowid;
+				//$actioncomm->location = 'rememberme|'.$row->rowid;
 				
 				$actioncomm->label = self::changeTags($object, $row->titre);
 				$actioncomm->note = self::changeTags($object, $row->message);
 				
 				$actioncomm->add($user);
+				$rememberme_element=new TRememberMeElement;
+				$rememberme_element->targettype='rememberme';
+				$rememberme_element->sourcetype='actioncomm';
+				$rememberme_element->fk_target=$row->rowid;
+				$rememberme_element->fk_source=$actioncomm->id;
+				$rememberme_element->save($PDOdb);
 
             }
             
@@ -224,5 +236,49 @@ Propale date [date]';
 		$TTags = array('[societe_nom]','[societe_code_client]','[ref]','[ref_client]','[date]');
 		return str_replace($TTags, $TNewval, $val);
 	}
+    
+}
+
+
+/*******************************************
+ * 
+ * 		   CLASS TRemembermeElement
+ * 
+ * *****************************************/
+ 
+class TRememberMeElement extends TObjetStd {
+	
+    function __construct() { /* declaration */
+        global $langs,$db;
+        parent::set_table(MAIN_DB_PREFIX.'rememberme_element');
+        parent::add_champs('fk_source,fk_target',array('index'=>true, 'type'=>'int'));
+        parent::add_champs('sourcetype,targettype', array('index'=>true, 'type'=>'string', 'length'=>50)); 
+		
+        parent::start();
+		
+		$this->db = $db;
+        
+	}
+    
+    static function getAll(&$PDOdb, $sourcetype='', $fk_source=null) {
+        
+        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE 1 ";
+        
+        if(!empty($sourcetype)) $sql.=" AND  sourcetype = '".$sourcetype."' "; 
+        if(!empty($fk_source)) $sql.=" AND  fk_source = ".$fk_source; 
+        
+        $Tab = $PDOdb->ExecuteAsArray($sql);
+        
+        $TRes = array();
+        foreach($Tab as $row) {
+            
+            $r=new TRememberMeElement;
+            $r->load($PDOdb, $row->rowid);
+            
+            $TRes[] = $r;
+        }
+        
+        return $TRes ;
+    }
     
 }
