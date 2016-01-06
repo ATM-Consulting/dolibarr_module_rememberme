@@ -180,7 +180,11 @@ Propale date [date]';
 				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 				$actioncomm->note = $row->message;
 				
+				$actioncomm->label = TRememberMe::changeTags($object, $row->titre);
+				$actioncomm->note = TRememberMe::changeTags($object, $row->message);
+				
 				$actioncomm->add($user);
+				
 				$rememberme_element=new TRememberMeElement;
 				$rememberme_element->targettype='actioncomm';
 				$rememberme_element->sourcetype=$object->table_element;
@@ -188,6 +192,7 @@ Propale date [date]';
 				$rememberme_element->fk_target=$actioncomm->id;
 				$rememberme_element->fk_source=$object->id;
 				$rememberme_element->save($PDOdb);
+				
                 
             }
             else if($row->type == 'EMAIL') {
@@ -207,10 +212,11 @@ Propale date [date]';
 				// Utile pour le suivi de trigger
 				//$actioncomm->location = 'rememberme|'.$row->rowid;
 				
-				$actioncomm->label = self::changeTags($object, $row->titre);
-				$actioncomm->note = self::changeTags($object, $row->message);
+				$actioncomm->label = TRememberMe::changeTags($object, $row->titre);
+				$actioncomm->note = TRememberMe::changeTags($object, $row->message);
 				
 				$actioncomm->add($user);
+				
 				$rememberme_element=new TRememberMeElement;
 				$rememberme_element->targettype='actioncomm';
 				$rememberme_element->sourcetype=$object->table_element;
