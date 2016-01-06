@@ -114,20 +114,20 @@ Propale date [date]';
         
         $Tab = $PDOdb->ExecuteAsArray($sql);
 		
-		
+		//echo $action.'<br>';
         foreach($Tab as $row) {
         	// Switch pour gérer des spécificité en fonction des triggers
 	        switch($action)
 			{
-				case preg_match('/VALIDATE/', strtoupper($action))?true:false:
+				case preg_match('/VALIDATE/', strtoupper($action)) ? true : false :
 					
 					// Requete pour récuperer les actioncomm futurs
-					$TRemembermeElement = TRememberMeElement::getAll($PDOdb, $row->rowid, 'actioncomm');
-					
+					$TRemembermeElement = TRememberMeElement::getAll($PDOdb, $row->rowid,$object->id,'propal',null,'actioncomm');
+
 					// On parcours tout et on test pour delete
 					foreach($TRemembermeElement as $remembermeElement) {
 						$actioncomm=new ActionComm($db);
-						$actioncomm->fetch($remembermeElement->fk_source);
+						$actioncomm->fetch($remembermeElement->fk_target);
 						if(!empty($actioncomm->id))
 						{
 							$actiondate = strtotime(date('Y-m-d', $actioncomm->datep)); // Date de l event en affichage Y-m-d
@@ -182,10 +182,11 @@ Propale date [date]';
 				
 				$actioncomm->add($user);
 				$rememberme_element=new TRememberMeElement;
-				$rememberme_element->targettype='rememberme';
-				$rememberme_element->sourcetype='actioncomm';
-				$rememberme_element->fk_target=$row->rowid;
-				$rememberme_element->fk_source=$actioncomm->id;
+				$rememberme_element->targettype='actioncomm';
+				$rememberme_element->sourcetype=$object->table_element;
+				$rememberme_element->fk_rememberme=$row->rowid;
+				$rememberme_element->fk_target=$actioncomm->id;
+				$rememberme_element->fk_source=$object->id;
 				$rememberme_element->save($PDOdb);
                 
             }
@@ -211,10 +212,11 @@ Propale date [date]';
 				
 				$actioncomm->add($user);
 				$rememberme_element=new TRememberMeElement;
-				$rememberme_element->targettype='rememberme';
-				$rememberme_element->sourcetype='actioncomm';
-				$rememberme_element->fk_target=$row->rowid;
-				$rememberme_element->fk_source=$actioncomm->id;
+				$rememberme_element->targettype='actioncomm';
+				$rememberme_element->sourcetype=$object->table_element;
+				$rememberme_element->fk_rememberme=$row->rowid;
+				$rememberme_element->fk_target=$actioncomm->id;
+				$rememberme_element->fk_source=$object->id;
 				$rememberme_element->save($PDOdb);
 
             }
@@ -256,7 +258,7 @@ class TRememberMeElement extends TObjetStd {
     function __construct() { /* declaration */
         global $langs,$db;
         parent::set_table(MAIN_DB_PREFIX.'rememberme_element');
-        parent::add_champs('fk_source,fk_target',array('index'=>true, 'type'=>'int'));
+        parent::add_champs('fk_source,fk_target,fk_rememberme',array('index'=>true, 'type'=>'int'));
         parent::add_champs('sourcetype,targettype', array('index'=>true, 'type'=>'string', 'length'=>50)); 
 		
         parent::start();
@@ -265,15 +267,15 @@ class TRememberMeElement extends TObjetStd {
         
 	}
     
-    static function getAll(&$PDOdb, $fk_target=null, $sourcetype='', $fk_source=null, $targettype='') {
+    static function getAll(&$PDOdb,$fk_rememberme, $fk_source=null, $sourcetype='', $fk_target=null, $targettype='') {
         
-        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE 1 ";
-        
+        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE fk_rememberme = ".$fk_rememberme;
+
         if(!empty($sourcetype)) $sql.=" AND  sourcetype = '".$sourcetype."' "; 
         if(!empty($fk_source)) $sql.=" AND  fk_source = ".$fk_source; 
         if(!empty($targettype)) $sql.=" AND  targettype = '".$targettype."' "; 
         if(!empty($fk_target)) $sql.=" AND  fk_target = ".$fk_target; 
-        
+		
         $Tab = $PDOdb->ExecuteAsArray($sql);
         
         $TRes = array();
