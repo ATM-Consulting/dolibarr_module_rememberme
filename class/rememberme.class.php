@@ -3,6 +3,9 @@
 require_once DOL_DOCUMENT_ROOT .'/societe/class/societe.class.php';
 require_once DOL_DOCUMENT_ROOT .'/comm/propal/class/propal.class.php';
 require_once DOL_DOCUMENT_ROOT .'/comm/action/class/actioncomm.class.php';
+require_once DOL_DOCUMENT_ROOT . '/core/lib/date.lib.php';
+require_once DOL_DOCUMENT_ROOT . '/core/lib/functions.lib.php';
+
 
 class TRememberMe extends TObjetStd {
 	
@@ -30,6 +33,7 @@ Propale date [date]';
             'MSG'=>'Message écran'
             ,'EVENT'=>'Evènement agenda'
             ,'EMAIL'=>'Envoi email'
+            ,'EMAIL_INTERNE'=>'Envoi email interne'
             ,'EVAL'=>'Evaluation du code php (attention !)'
         );
         
@@ -105,7 +109,7 @@ Propale date [date]';
     }
     
     static function message($action, &$object, $type='') {
-        global $user, $db;
+        global $user, $db, $conf, $langs;
         
         $PDOdb = new TPDOdb;
         $sql = "SELECT * FROM ".MAIN_DB_PREFIX."rememberme 
@@ -119,7 +123,7 @@ Propale date [date]';
         	// Switch pour gérer des spécificité en fonction des triggers
 	        switch($action)
 			{
-				case preg_match('/VALIDATE/', strtoupper($action)) ? true : false :
+				case preg_match('/VALIDATE/', strtoupper($action)) ? true : false : //TODO AA cette écriture est à chier (intelligent mais illisible, là où un if apporte une solution aussi efficace et surtout lisible !)
 					
 					// Requete pour récuperer les actioncomm futurs
 					$TRemembermeElement = TRememberMeElement::getAll($PDOdb, $row->rowid,$object->id,'propal',null,'actioncomm');
@@ -180,7 +184,7 @@ Propale date [date]';
 				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 				$actioncomm->note = $row->message;
 				
-				$actioncomm->label = TRememberMe::changeTags($object, $row->titre);
+				$actioncomm->label = TRememberMe::changeTags($object, $row->titre); //TODO sérieusement là ?
 				$actioncomm->note = TRememberMe::changeTags($object, $row->message);
 				
 				$actioncomm->add($user);
@@ -195,42 +199,86 @@ Propale date [date]';
 				
                 
             }
-            else if($row->type == 'EMAIL') {
-				$actioncomm=new ActionComm($db);
-				$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
-				$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
-				 
-				$actioncomm->userownerid = $user->id;
-				$actioncomm->type_code='AC_RMB_EMAIL';
+            else if (($row->type == 'EMAIL' || $row->type == 'EMAIL_INTERNE')
+				&& ($object->type_code!='AC_RMB_EMAIL' && $object->type_code!='AC_RMB_EI')) {
+            	//getAll(&$PDOdb,$fk_rememberme=0, $fk_source=null, $sourcetype='', $fk_target=null, $targettype='')
+            	//$PDOdb->debug=true;
+				$TAction = TRememberMeElement::getAll($PDOdb,0,$object->id,$object->table_element,0,'actioncomm');
 				
-				$actioncomm->elementtype=$object->element;
-				$actioncomm->fk_element = $object->id;
+				if(empty($TAction)) {
+					
+					$actioncomm=new ActionComm($db);
+					$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
+					$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
+					 
+					$actioncomm->userownerid = $user->id;
+					
+					$actioncomm->type_code= $row->type == 'EMAIL' ? 'AC_RMB_EMAIL' : 'AC_RMB_EI';
+					
+					$actioncomm->elementtype=$object->element;
+					$actioncomm->fk_element = $object->id;
+					
+					$actioncomm->progress = 0;
+					
+					$actioncomm->durationp = 0;
+					// Utile pour le suivi de trigger
+					//$actioncomm->location = 'rememberme|'.$row->rowid;
+					
+					$actioncomm->label = TRememberMe::changeTags($object, $row->titre);
+					$actioncomm->note = TRememberMe::changeTags($object, $row->message);
+			
+					$res = $actioncomm->add($user,1);
+
+					if($res>0) {
+						$rememberme_element=new TRememberMeElement;
+						$rememberme_element->targettype='actioncomm';
+						$rememberme_element->sourcetype=$object->table_element;
+						$rememberme_element->fk_rememberme=$row->rowid;
+						$rememberme_element->fk_target=$actioncomm->id;
+						$rememberme_element->fk_source=$object->id;
+						$rememberme_element->save($PDOdb);
+					}
+
+				}
+				else {
+					
+					foreach($TAction as &$rmbel) {
+						
+						$actioncomm=new ActionComm($db);
+						if($actioncomm->fetch($rmbel->fk_target)>0) {
+							$actioncomm->fetch_userassigned();
+							
+							if(!empty($row->message_code)) {
+					
+								   $eval = $row->message_code;
+									
+					               $res = eval($eval);
+									
+									//var_dump($actioncomm->userassigned , $object->userassigned);exit;	
+					        }
+							
+						}
+						else {
+							$rmbel->delete($PDOdb);
+						}
+						
+						$nomoreeval =true;
+					}
+					
+				}
 				
-				$actioncomm->progress = 0;
 				
-				$actioncomm->durationp = 0;
-				// Utile pour le suivi de trigger
-				//$actioncomm->location = 'rememberme|'.$row->rowid;
-				
-				$actioncomm->label = TRememberMe::changeTags($object, $row->titre);
-				$actioncomm->note = TRememberMe::changeTags($object, $row->message);
-				
-				$actioncomm->add($user);
-				
-				$rememberme_element=new TRememberMeElement;
-				$rememberme_element->targettype='actioncomm';
-				$rememberme_element->sourcetype=$object->table_element;
-				$rememberme_element->fk_rememberme=$row->rowid;
-				$rememberme_element->fk_target=$actioncomm->id;
-				$rememberme_element->fk_source=$object->id;
-				$rememberme_element->save($PDOdb);
 
             }
+
+			if(!empty($row->message_code) && empty($nomoreeval)) {
+				
+					$eval = $row->message_code;
+				
+	                eval($eval);
+	        }
+
             
-            
-            if(!empty($row->message_code)) {
-                eval($row->message_code);
-            }
             
             
         }        
@@ -273,9 +321,11 @@ class TRememberMeElement extends TObjetStd {
         
 	}
     
-    static function getAll(&$PDOdb,$fk_rememberme, $fk_source=null, $sourcetype='', $fk_target=null, $targettype='') {
+    static function getAll(&$PDOdb,$fk_rememberme=0, $fk_source=null, $sourcetype='', $fk_target=null, $targettype='') {
         
-        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE fk_rememberme = ".$fk_rememberme;
+        $sql = "SELECT rowid FROM ".MAIN_DB_PREFIX."rememberme_element WHERE 1 ";
+        
+        if($fk_rememberme>0) $sql.= " AND fk_rememberme = ".$fk_rememberme;
 
         if(!empty($sourcetype)) $sql.=" AND  sourcetype = '".$sourcetype."' "; 
         if(!empty($fk_source)) $sql.=" AND  fk_source = ".$fk_source; 

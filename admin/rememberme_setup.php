@@ -48,13 +48,16 @@ $PDOdb=new TPDOdb;
      if(!empty($_REQUEST['TRemember'])) {
          
          foreach($_REQUEST['TRemember'] as $id_rem => &$rem) {
-            
+           // var_dump($rem);
              $r=new TRememberMe;
              $r->load($PDOdb, $id_rem);
              $r->set_values($rem);
              
-             $r->fk_societe = GETPOST('TRemember_'.$r->getId().'_fk_soc');
-             $r->fk_user = GETPOST('TRemember_'.$r->getId().'_fk_user');
+			 $fk_societe=GETPOST('TRemember_'.$r->getId().'_fk_soc');
+			 $r->fk_societe = $fk_societe > 0 ? $fk_societe : 0 ;
+			 
+			 $fk_user = GETPOST('TRemember_'.$r->getId().'_fk_user');
+             $r->fk_user = $fk_user > 0 ? $fk_user : 0 ;
              
              $r->save($PDOdb);
          }
@@ -117,6 +120,7 @@ echo $formCore->hidden('action', 'save');
 			switch($(this).val()){
 				case 'EVENT':
 				case 'EMAIL':
+				case 'EMAIL_INTERNE':
 					$(prefix+' .nbday').show();
 					$(prefix+' .titre').show();
 					$(prefix+' .message').show();
@@ -154,6 +158,7 @@ print '</tr>';
 		switch ($r->type){
 			case 'EVENT':
 			case 'EMAIL':
+			case 'EMAIL_INTERNE':
 				$cssNBDAY = '';
 				$cssTITRE = '';
 				$cssMESSAGE = '';
@@ -207,7 +212,7 @@ print '</tr>';
             ?></td>
             
             <td valign="center"><?php 
-                    echo $formCore->zonetexte($langs->trans('CodeToEvalBefore').'<br />','TRemember['.$r->getId().'][condition]' , $r->message_condition, 50,2); 
+                    echo $formCore->zonetexte($langs->trans('CodeToEvalBefore').'<br />','TRemember['.$r->getId().'][message_condition]' , $r->message_condition, 50,2); 
                     echo '<br />'.$formCore->zonetexte($langs->trans('CodeToEvalAfter').'<br />','TRemember['.$r->getId().'][message_code]' , $r->message_code, 50,2);   
              ?></td>
             

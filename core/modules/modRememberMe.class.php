@@ -254,12 +254,14 @@ class modRememberMe extends DolibarrModules
 
         $PDOdb=new TPDOdb;
         $o=new TRememberMe;
+		$o->init_db_by_vars($PDOdb);
 		
         $o=new TRememberMeElement;
         $o->init_db_by_vars($PDOdb);
 		
         $o->init_db_by_vars($PDOdb);
-		$nextid = 0;
+
+		$nextid = 0; //TODO AA vérifier si ça doit vraiment être moche à ce point !?
 		$req = 'SELECT * FROM '.MAIN_DB_PREFIX.'c_actioncomm WHERE code = \'AC_RMB_EMAIL\'';
 		$ret = $PDOdb->ExecuteAsArray($req);
 		if(sizeof($ret) == 0)
@@ -271,7 +273,20 @@ class modRememberMe extends DolibarrModules
 			$req.= " VALUES (".$nextid.", 'AC_RMB_EMAIL', 'rememberme', 'Email a envoyer automatiquement', 'rememberme', 1, NULL, 200)";
 			$PDOdb->Execute($req);
 		}
-		
+
+		$nextid = 0;
+		$req = 'SELECT * FROM '.MAIN_DB_PREFIX.'c_actioncomm WHERE code = \'AC_RMB_EI\'';
+		$ret = $PDOdb->ExecuteAsArray($req);
+		if(sizeof($ret) == 0)
+		{
+			$req = 'SELECT MAX(id) as max FROM '.MAIN_DB_PREFIX.'c_actioncomm';
+			$ret = $PDOdb->ExecuteAsArray($req);
+			$nextid = $ret[0]->max + 1;
+			$req = 'INSERT INTO '.MAIN_DB_PREFIX.'c_actioncomm (id, code, type, libelle, module, active, todo, position)';
+			$req.= " VALUES (".$nextid.", 'AC_RMB_EI', 'rememberme', 'Email interne à envoyer automatiquement', 'rememberme', 1, NULL, 201)";
+			$PDOdb->Execute($req);
+			//var_dump($PDOdb);exit;
+		}
 		
 		$nextid = 0;
 		$req = 'SELECT * FROM '.MAIN_DB_PREFIX.'c_actioncomm WHERE code = \'AC_RMB_OTHER\'';
@@ -282,7 +297,7 @@ class modRememberMe extends DolibarrModules
 			$ret = $PDOdb->ExecuteAsArray($req);
 			$nextid = $ret[0]->max + 1;
 			$req = 'INSERT INTO '.MAIN_DB_PREFIX.'c_actioncomm (id, code, type, libelle, module, active, todo, position)';
-			$req.= " VALUES (".$nextid.", 'AC_RMB_OTHER', 'rememberme', 'Autre (RememberMe)', 'rememberme', 1, NULL, 200)";
+			$req.= " VALUES (".$nextid.", 'AC_RMB_OTHER', 'rememberme', 'Autre (RememberMe)', 'rememberme', 1, NULL, 202)";
 			$PDOdb->Execute($req);
 		}
 		
