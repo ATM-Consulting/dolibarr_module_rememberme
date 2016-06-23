@@ -208,6 +208,7 @@ Propale date [date]';
 				if(empty($TAction)) {
 					
 					$actioncomm=new ActionComm($db);
+					$actioncomm->societe = $object->societe;
 					$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 					$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
 					 
@@ -246,16 +247,16 @@ Propale date [date]';
 						
 						$actioncomm=new ActionComm($db);
 						if($actioncomm->fetch($rmbel->fk_target)>0) {
-							$actioncomm->fetch_userassigned();
+							if (method_exists($actioncomm, 'fetch_userassigned')) $actioncomm->fetch_userassigned();
 							
 							if(!empty($row->message_code)) {
 					
 								   $eval = $row->message_code;
 									
 					               $res = eval($eval);
-									
 									//var_dump($actioncomm->userassigned , $object->userassigned);exit;	
 					        }
+							
 							
 						}
 						else {

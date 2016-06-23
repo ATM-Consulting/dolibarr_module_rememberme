@@ -20,11 +20,12 @@
 	$dontsend=false;
 	$send=null;
 
-	$sql = "SELECT id";
-	$sql.=" FROM ".MAIN_DB_PREFIX."actioncomm";
-	$sql.=" WHERE code = 'AC_RMB_EMAIL'";
-	$sql.=" AND datep <= NOW()";
-	$sql.=" AND percent = 0;";
+	$sql = "SELECT a.id";
+	$sql.=" FROM ".MAIN_DB_PREFIX."actioncomm a";
+	$sql.=" LEFT JOIN ".MAIN_DB_PREFIX."c_actioncomm ac ON (a.fk_action = ac.id)";
+	$sql.=" WHERE ac.code = 'AC_RMB_EMAIL'";
+	$sql.=" AND a.datep <= NOW()";
+	$sql.=" AND a.percent = 0;";
 	$PDOdb->Execute($sql);
 	while($PDOdb->Get_line()) {
 		
@@ -42,6 +43,7 @@
 				$error = "La société ".$societe->name." n'a pas d'email définit sur sa fiche";
 			}else{
 				$emailto = $societe->email;
+				
 				/*********************************
 				 * 
 				 * Spécifique céribois, 
