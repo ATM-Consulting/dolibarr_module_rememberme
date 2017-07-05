@@ -289,7 +289,7 @@ Propale date [date]';
 
 	static function changeTags($object, $val)
 	{
-		global $db;
+		global $db;//TODO add user tag
 		$societe = new Societe($db);
 		$socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 		$societe->fetch($socid);
