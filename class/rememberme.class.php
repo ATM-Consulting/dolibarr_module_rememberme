@@ -157,7 +157,10 @@ Propale date [date]';
             if(empty($row->type_msg))$row->type_msg='warnings';
             
             if(!empty($row->message_condition)) {
-                if(!eval('return ('.$row->message_condition.');')) continue; //ne répond pas au test 
+		if(strpos($row->message_condition,'return ') === false) {
+			$row->message_condition = 'return ('.$row->message_condition.');';
+		}
+                if(!eval($row->message_condition)) continue; //ne répond pas au test 
             }
             
             if($row->type == 'MSG') setEventMessage($row->message, $row->type_msg);
