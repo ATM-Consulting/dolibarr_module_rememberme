@@ -214,8 +214,9 @@ Propale date [date]';
 					$actioncomm->societe = $object->societe;
 					$actioncomm->socid = !empty($object->socid) ? $object->socid : $object->fk_soc;
 					$actioncomm->datep = strtotime('+'.$row->nb_day_after.'day');
-					 
+					
 					$actioncomm->userownerid = $user->id;
+					$actioncomm->userassigned = array('id'=>$user->id, 'transparency'=>0);
 					
 					$actioncomm->type_code= $row->type == 'EMAIL' ? 'AC_RMB_EMAIL' : 'AC_RMB_EI';
 					
