@@ -190,7 +190,8 @@ Propale date [date]';
 				$actioncomm->label = TRememberMe::changeTags($object, $row->titre); //TODO sérieusement là ?
 				$actioncomm->note = TRememberMe::changeTags($object, $row->message);
 				
-				$actioncomm->add($user);
+				if(floatval(DOL_VERSION) >= 4.0) $actioncomm->create($user);
+				else $actioncomm->add($user);
 				
 				$rememberme_element=new TRememberMeElement;
 				$rememberme_element->targettype='actioncomm';
